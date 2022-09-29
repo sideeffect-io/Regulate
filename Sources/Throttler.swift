@@ -1,12 +1,26 @@
 //
 //  Throttler.swift
-//  Debounce
+//
 //
 //  Created by Thibault Wittemberg on 28/09/2022.
 //
 
 import Foundation
 
+/// Executes the output with either the most-recent or first element pushed in the Throttler in the specified time interval
+///
+/// ```swift
+/// let throttler = Throttler<Int>(dueTime: .seconds(2), latest: true, output: { print($0) })
+///
+/// for index in (0...99) {
+///   DispatchQueue.global().asyncAfter(deadline: .now().advanced(by: .milliseconds(100 * index))) {
+///     // pushes a value every 100 ms
+///     throttler.push(index)
+///   }
+/// }
+///
+/// // will only print an index once every 2 seconds (the latest received index before the `tick`)
+/// ```
 public final class Throttler<Value>: @unchecked Sendable, ObservableObject, Regulator {
   struct StateMachine {
     enum State {
@@ -55,13 +69,22 @@ public final class Throttler<Value>: @unchecked Sendable, ObservableObject, Regu
   }
 
   public var output: (@Sendable (Value) async -> Void)?
-
-  private let dueTime: DispatchTimeInterval
+  public var dueTime: DispatchTimeInterval
+  
   private let latest: Bool
   private let lock: os_unfair_lock_t = UnsafeMutablePointer<os_unfair_lock_s>.allocate(capacity: 1)
   private var stateMachine = StateMachine()
   private var task: Task<Void, Never>?
 
+  public convenience init() {
+    self.init(dueTime: .never, latest: true, output: nil)
+  }
+
+  /// A Regulator that emits either the most-recent or first element received during the specified interval
+  /// - Parameters:
+  ///   - dueTime: the interval at which to find and emit either the most recent or the first element
+  ///   - latest: true if output should be called with the most-recent element, false otherwise
+  ///   - output: the block to execute once the regulationis done
   public init(
     dueTime: DispatchTimeInterval,
     latest: Bool = true,
@@ -71,14 +94,6 @@ public final class Throttler<Value>: @unchecked Sendable, ObservableObject, Regu
     self.dueTime = dueTime
     self.latest = latest
     self.output = output
-  }
-
-  public convenience init(
-    dueTime: DispatchTimeInterval,
-    latest: Bool = true,
-    output: (@Sendable () async -> Void)? = nil
-  ) where Value == Void {
-    self.init(dueTime: dueTime, latest: latest, output: { _ in await output?() })
   }
 
   public func push(_ value: Value) {

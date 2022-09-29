@@ -1,12 +1,26 @@
 //
 //  Debouncer.swift
-//  Debounce
+//
 //
 //  Created by Thibault Wittemberg on 28/09/2022.
 //
 
 import Foundation
 
+/// Executes an output only after a specified time interval elapses between events
+///
+/// ```swift
+/// let debouncer = Debouncer<Int>(dueTime: .seconds(2), output: { print($0) })
+///
+/// for index in (0...99) {
+///   DispatchQueue.global().asyncAfter(deadline: .now().advanced(by: .milliseconds(100 * index))) {
+///     // pushes a value every 100 ms
+///     debouncer.push(index)
+///   }
+/// }
+///
+/// // will only print "99" 2 seconds after the last call to `push(_:)`
+/// ```
 public final class Debouncer<Value>: @unchecked Sendable, ObservableObject, Regulator {
   struct DueValue {
     let value: Value
@@ -52,12 +66,20 @@ public final class Debouncer<Value>: @unchecked Sendable, ObservableObject, Regu
   }
 
   public var output: (@Sendable (Value) async -> Void)?
+  public var dueTime: DispatchTimeInterval
 
-  private let dueTime: DispatchTimeInterval
   private let lock: os_unfair_lock_t = UnsafeMutablePointer<os_unfair_lock_s>.allocate(capacity: 1)
   private var stateMachine = StateMachine()
   private var task: Task<Void, Never>?
 
+  public convenience init() {
+    self.init(dueTime: .never, output: nil)
+  }
+
+  /// A Regulator that executes the output only after a specified time interval elapses between events
+  /// - Parameters:
+  ///   - dueTime: the time the Debouncer should wait before executing the output
+  ///   - output: the block to execute once the regulationis done
   public init(
     dueTime: DispatchTimeInterval,
     output: (@Sendable (Value) async -> Void)? = nil
@@ -65,13 +87,6 @@ public final class Debouncer<Value>: @unchecked Sendable, ObservableObject, Regu
     self.lock.initialize(to: os_unfair_lock())
     self.dueTime = dueTime
     self.output = output
-  }
-
-  public convenience init(
-    dueTime: DispatchTimeInterval,
-    output: (@Sendable () async -> Void)? = nil
-  ) where Value == Void {
-    self.init(dueTime: dueTime, output: { _ in await output?() })
   }
 
   public func push(_ value: Value) {
@@ -89,23 +104,23 @@ public final class Debouncer<Value>: @unchecked Sendable, ObservableObject, Regu
         var timeToSleep = self.dueTime.nanoseconds
         var currentValue = value
 
-        loop: while true {
-          try? await Task.sleep(nanoseconds: timeToSleep)
+      loop: while true {
+        try? await Task.sleep(nanoseconds: timeToSleep)
 
-          var output: StateMachine.HasDebouncedOutput
-          os_unfair_lock_lock(self.lock)
-          output = self.stateMachine.hasDebouncedCurrentValue()
-          os_unfair_lock_unlock(self.lock)
+        var output: StateMachine.HasDebouncedOutput
+        os_unfair_lock_lock(self.lock)
+        output = self.stateMachine.hasDebouncedCurrentValue()
+        os_unfair_lock_unlock(self.lock)
 
-          switch output {
-            case .finishDebouncing:
-              break loop
-            case .continueDebouncing(let value):
-              timeToSleep = DispatchTime.now().distance(to: value.dueTime).nanoseconds
-              currentValue = value.value
-              continue loop
-          }
+        switch output {
+          case .finishDebouncing:
+            break loop
+          case .continueDebouncing(let value):
+            timeToSleep = DispatchTime.now().distance(to: value.dueTime).nanoseconds
+            currentValue = value.value
+            continue loop
         }
+      }
 
         await self.output?(currentValue)
       }
