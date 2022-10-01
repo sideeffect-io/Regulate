@@ -12,7 +12,11 @@ struct ContentView: View {
   @State var throttledCounter = 0
   @State var debouncedCounter = 0
   @State var text = ""
-  @StateObject var bindingRegulator = Throttler<String>(dueTime: .seconds(1))
+  @State var isOn = false
+  @State var steps = 0
+  @StateObject var textRegulator = Throttler<String>(dueTime: .seconds(1))
+  @StateObject var toggleRegulator = Debouncer<Bool>(dueTime: .seconds(1))
+  @StateObject var stepperRegulator = Debouncer<Int>(dueTime: .seconds(1))
 
   var body: some View {
     VStack {
@@ -50,7 +54,7 @@ struct ContentView: View {
       TextField(
         text: self
           .$text
-          .perform(regulator: bindingRegulator) { text in
+          .perform(regulator: textRegulator) { text in
             print("regulated text \(text)")
           }
       ) {
@@ -58,6 +62,24 @@ struct ContentView: View {
       }
       .textFieldStyle(RoundedBorderTextFieldStyle())
 
+      Toggle(
+        isOn: self
+          .$isOn
+          .perform(regulator: toggleRegulator) { value in
+            print("regulated toggle \(value)")
+          }
+      ) {
+        Text("Regulated toogle")
+      }
+
+      Stepper(
+        "Regulated stepper \(self.steps)",
+        value: self
+          .$steps
+          .perform(regulator: stepperRegulator) { value in
+            print("regulated stepper \(value)")
+          }
+      )
     }
     .padding()
   }
