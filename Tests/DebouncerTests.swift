@@ -13,7 +13,7 @@ final class DebouncerTests: XCTestCase {
     let hasDebounced = expectation(description: "Has debounced a value")
     let spy = Spy<Int>()
 
-    let sut = Debouncer<Int>(dueTime: .milliseconds(200)) { value in
+    let sut = Task.debounce(dueTime: .milliseconds(200)) { value in
       await spy.push(value)
       hasDebounced.fulfill()
     }

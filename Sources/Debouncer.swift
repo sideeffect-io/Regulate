@@ -7,6 +7,20 @@
 
 import Foundation
 
+public extension Task where Failure == Never {
+  /// Creates a `Regulator` that executes an output only after a specified time interval elapses between events
+  /// - Parameters:
+  ///   - dueTime: the time the Debouncer should wait before executing the output
+  ///   - output: the block to execute once the regulation is done
+  /// - Returns: the debounced regulator
+  static func debounce(
+    dueTime: DispatchTimeInterval,
+    output: @Sendable @escaping (Success) async -> Void
+  ) -> some Regulator<Success> {
+    Debouncer(dueTime: dueTime, output: output)
+  }
+}
+
 /// Executes an output only after a specified time interval elapses between events
 ///
 /// ```swift
@@ -79,7 +93,7 @@ public final class Debouncer<Value>: @unchecked Sendable, ObservableObject, Regu
   /// A Regulator that executes the output only after a specified time interval elapses between events
   /// - Parameters:
   ///   - dueTime: the time the Debouncer should wait before executing the output
-  ///   - output: the block to execute once the regulationis done
+  ///   - output: the block to execute once the regulation is done
   public init(
     dueTime: DispatchTimeInterval,
     output: (@Sendable (Value) async -> Void)? = nil

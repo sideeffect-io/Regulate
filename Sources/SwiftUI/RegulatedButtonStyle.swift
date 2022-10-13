@@ -20,7 +20,7 @@ public struct RegulatedButtonStyle<R: Regulator<Void>>: PrimitiveButtonStyle {
     regulator.dueTime = self.dueTime
     regulator.output = { _ in configuration.trigger() }
 
-    if #available(iOS 15.0, *) {
+    if #available(iOS 15.0, macOS 12.0, *) {
       return Button(role: configuration.role) {
         regulator.push(())
       } label: {

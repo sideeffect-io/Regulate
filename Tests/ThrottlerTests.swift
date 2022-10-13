@@ -15,7 +15,7 @@ final class ThrottlerTests: XCTestCase {
 
     let spy = Spy<Int>()
 
-    let sut = Throttler<Int>(dueTime: .milliseconds(100), latest: false) { value in
+    let sut = Task.throttle(dueTime: .milliseconds(100), latest: false) { value in
       await spy.push(value)
       hasThrottledTwoValues.fulfill()
     }
@@ -39,7 +39,7 @@ final class ThrottlerTests: XCTestCase {
 
     let spy = Spy<Int>()
 
-    let sut = Throttler<Int>(dueTime: .milliseconds(100), latest: true) { value in
+    let sut = Task.throttle(dueTime: .milliseconds(100), latest: true) { value in
       await spy.push(value)
       hasThrottledTwoValues.fulfill()
     }
@@ -63,7 +63,7 @@ final class ThrottlerTests: XCTestCase {
 
     let spy = Spy<Int>()
 
-    let sut = Throttler<Int>(dueTime: .milliseconds(100), latest: true) { value in
+    let sut = Task.throttle(dueTime: .milliseconds(100), latest: true) { value in
       await spy.push(value)
       hasThrottledTwoValues.fulfill()
     }
