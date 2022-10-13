@@ -7,6 +7,22 @@
 
 import Foundation
 
+public extension Task where Failure == Never {
+  /// Creates a `Regulator` that executes the output with either the most-recent or first element
+  /// pushed in the Throttler in the specified time interval
+  ///   - dueTime: the interval at which to find and emit either the most recent or the first element
+  ///   - latest: true if output should be called with the most-recent element, false otherwise
+  ///   - output: the block to execute once the regulation is done
+  /// - Returns: the throttled regulator
+  static func throttle(
+    dueTime: DispatchTimeInterval,
+    latest: Bool = true,
+    output: @Sendable @escaping (Success) async -> Void
+  ) -> some Regulator<Success> {
+    Throttler(dueTime: dueTime, latest: latest, output: output)
+  }
+}
+
 /// Executes the output with either the most-recent or first element pushed in the Throttler in the specified time interval
 ///
 /// ```swift
@@ -84,7 +100,7 @@ public final class Throttler<Value>: @unchecked Sendable, ObservableObject, Regu
   /// - Parameters:
   ///   - dueTime: the interval at which to find and emit either the most recent or the first element
   ///   - latest: true if output should be called with the most-recent element, false otherwise
-  ///   - output: the block to execute once the regulationis done
+  ///   - output: the block to execute once the regulation is done
   public init(
     dueTime: DispatchTimeInterval,
     latest: Bool = true,

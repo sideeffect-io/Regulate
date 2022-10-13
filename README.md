@@ -7,6 +7,17 @@
 
 **Regulate** is entirely backed by Swift concurrency and limits the number of created `Tasks` to the minimum.
 
+```swift
+let regulator = Task.debounce(dueTime: .milliseconds(200)) { (value: Int) in
+  print(value)
+}
+
+// the created `regulator` can be used across `Tasks` and each call to `regulator.push(x)`
+// will feed the regulation system
+
+// the execution of the provided closure will be debounced and executed 200ms after the last call to `push(x)`
+```
+
 **Regulate** also provides SwiftUI helpers to regulate buttons and bindings out of the box.
 You can give a look at the [Sample app](./Sample).
 
